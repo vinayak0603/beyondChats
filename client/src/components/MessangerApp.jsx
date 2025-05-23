@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import ConversationList from './conversationList';
+import ConversationList from './ConversationList';
 import axios from 'axios';
 import MessageArea from './MessageArea';
 import DetailsPanel from './DetailsPanel';

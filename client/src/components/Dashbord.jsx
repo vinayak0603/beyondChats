@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-import ConversationList from './conversationList';
+import ConversationList from './ConversationList';
 
 const Dashboard = () => {
   const [emails, setEmails] = useState([]);
