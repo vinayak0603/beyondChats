@@ -64,7 +64,7 @@ app.get('/auth/google/callback',
       access_token: req.user.accessToken,
       refresh_token: req.user.refreshToken,
     };
-    res.redirect('https://beyond-chats-chatbot.netlify.app//dashboard');
+    res.redirect('https://beyond-chats-chatbot.netlify.app/dashboard');
   }
 );
 
