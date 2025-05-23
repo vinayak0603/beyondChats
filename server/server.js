@@ -16,7 +16,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use(cors({
-  origin: 'http://localhost:5173',
+  origin: 'https://beyond-chats-chatbot.netlify.app/',
   credentials: true,
 }));
 
@@ -36,7 +36,7 @@ passport.deserializeUser((obj, done) => done(null, obj));
 passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID,
   clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-  callbackURL: 'http://localhost:5000/auth/google/callback',
+  callbackURL: 'https://beyondchats-dqoh.onrender.com/auth/google/callback',
 }, (accessToken, refreshToken, profile, done) => {
   profile.accessToken = accessToken;
   profile.refreshToken = refreshToken;
@@ -64,7 +64,7 @@ app.get('/auth/google/callback',
       access_token: req.user.accessToken,
       refresh_token: req.user.refreshToken,
     };
-    res.redirect('http://localhost:5173/dashboard');
+    res.redirect('https://beyond-chats-chatbot.netlify.app//dashboard');
   }
 );
 
@@ -76,7 +76,7 @@ app.get('/userinfo', (req, res) => {
 app.get('/logout', (req, res) => {
   req.logout(() => {
     req.session.destroy();
-    res.redirect('http://localhost:5173');
+    res.redirect('https://beyond-chats-chatbot.netlify.app/');
   });
 });
 
