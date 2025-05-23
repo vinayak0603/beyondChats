@@ -9,53 +9,57 @@ const multer = require('multer');
 const fs = require('fs');
 const pdfParse = require('pdf-parse');
 const { OpenAI } = require('openai');
+
 const PORT = process.env.PORT || 5000;
+const CLIENT_ORIGIN = 'https://beyond-chats-chatbot.netlify.app';
+const CALLBACK_URL = 'https://beyondchats-dqoh.onrender.com/auth/google/callback';
 
 const app = express();
+
+// Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-app.use(cors({
-  origin: 'https://beyond-chats-chatbot.netlify.app',
-  credentials: true,
-}));
-
+app.use(cors({ origin: CLIENT_ORIGIN, credentials: true }));
 app.use(session({
   secret: process.env.SESSION_SECRET,
   resave: false,
-  saveUninitialized: true,
+  saveUninitialized: false,
   cookie: { secure: false },
 }));
-
 app.use(passport.initialize());
 app.use(passport.session());
 
+// Passport setup
 passport.serializeUser((user, done) => done(null, user));
 passport.deserializeUser((obj, done) => done(null, obj));
 
 passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID,
   clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-  callbackURL: 'https://beyondchats-dqoh.onrender.com/auth/google/callback',
+  callbackURL: CALLBACK_URL,
 }, (accessToken, refreshToken, profile, done) => {
   profile.accessToken = accessToken;
   profile.refreshToken = refreshToken;
   return done(null, profile);
 }));
 
-// ✅ This is the FIXED route
-app.get('/auth/google',
-  passport.authenticate('google', {
-    scope: [
-      'profile',
-      'email',
-      'https://www.googleapis.com/auth/gmail.readonly',
-      'https://www.googleapis.com/auth/gmail.send',
-    ],
-    accessType: 'offline',
-    prompt: 'consent',
-  })
-);
+// Middleware to protect routes
+const ensureAuthenticated = (req, res, next) => {
+  if (req.isAuthenticated()) return next();
+  res.status(401).json({ error: 'Unauthorized' });
+};
+
+// Auth Routes
+app.get('/auth/google', passport.authenticate('google', {
+  scope: [
+    'profile',
+    'email',
+    'https://www.googleapis.com/auth/gmail.readonly',
+    'https://www.googleapis.com/auth/gmail.send',
+  ],
+  accessType: 'offline',
+  prompt: 'consent',
+}));
 
 app.get('/auth/google/callback',
   passport.authenticate('google', { failureRedirect: '/login-failed', session: true }),
@@ -64,27 +68,29 @@ app.get('/auth/google/callback',
       access_token: req.user.accessToken,
       refresh_token: req.user.refreshToken,
     };
-    res.redirect('https://beyond-chats-chatbot.netlify.app/dashboard');
+    res.redirect(`${CLIENT_ORIGIN}/dashboard`);
   }
 );
 
-app.get('/userinfo', (req, res) => {
-  if (!req.isAuthenticated()) return res.status(401).send('Not logged in');
+// User Info
+app.get('/userinfo', ensureAuthenticated, (req, res) => {
   res.json({ email: req.user.emails[0].value });
 });
 
 app.get('/logout', (req, res) => {
   req.logout(() => {
     req.session.destroy();
-    res.redirect('https://beyond-chats-chatbot.netlify.app/');
+    res.redirect(CLIENT_ORIGIN);
   });
 });
 
-app.get('/emails', async (req, res) => {
-  if (!req.session.tokens) return res.status(401).send('Unauthorized');
+// Gmail Fetch Route
+app.get('/emails', ensureAuthenticated, async (req, res) => {
+  const tokens = req.session.tokens;
+  if (!tokens) return res.status(401).send('Unauthorized');
 
   const auth = new google.auth.OAuth2();
-  auth.setCredentials(req.session.tokens);
+  auth.setCredentials(tokens);
   const gmail = google.gmail({ version: 'v1', auth });
 
   try {
@@ -113,12 +119,9 @@ app.get('/emails', async (req, res) => {
       if (match) {
         fromName = match[1].trim();
         fromEmail = match[2].trim();
-      } else if (rawFrom.includes('@')) {
+      } else {
         fromName = rawFrom.trim();
         fromEmail = rawFrom.trim();
-      } else {
-        fromName = rawFrom.trim() || 'Unknown Sender';
-        fromEmail = 'unknown@example.com';
       }
 
       return {
@@ -140,12 +143,17 @@ app.get('/emails', async (req, res) => {
   }
 });
 
-app.post('/reply', express.json(), async (req, res) => {
-  if (!req.session.tokens) return res.status(401).send('Unauthorized');
+// Reply Route
+app.post('/reply', ensureAuthenticated, async (req, res) => {
   const { to, subject, body, threadId } = req.body;
+  const tokens = req.session.tokens;
+
+  if (!to || !subject || !body || !threadId) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
 
   const auth = new google.auth.OAuth2();
-  auth.setCredentials(req.session.tokens);
+  auth.setCredentials(tokens);
   const gmail = google.gmail({ version: 'v1', auth });
 
   const emailLines = [
@@ -166,7 +174,7 @@ app.post('/reply', express.json(), async (req, res) => {
       userId: 'me',
       requestBody: {
         raw: base64EncodedEmail,
-        threadId: threadId,
+        threadId,
       },
     });
     res.send({ success: true });
@@ -176,23 +184,21 @@ app.post('/reply', express.json(), async (req, res) => {
   }
 });
 
+// File Upload
 const uploadDir = 'uploads';
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir);
 }
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadDir),
   filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname),
 });
 const upload = multer({ storage });
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
 let extractedText = '';
 
-app.post('/upload', upload.single('file'), async (req, res) => {
+app.post('/upload', ensureAuthenticated, upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
   try {
@@ -207,35 +213,43 @@ app.post('/upload', upload.single('file'), async (req, res) => {
   }
 });
 
-app.post('/ask', async (req, res) => {
+// OpenAI Setup
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+// Ask Question
+app.post('/ask', ensureAuthenticated, async (req, res) => {
   const { question } = req.body;
   if (!question) return res.status(400).json({ error: 'Question is required' });
 
+  if (!extractedText) {
+    return res.json({ answer: 'I don’t have any reference document uploaded. Please upload a PDF first.' });
+  }
+
   try {
-    const prompt = extractedText
-      ? `Here is a document:\n${extractedText}\n\nAnswer the following question based on the document:\n"${question}"`
-      : `I don't have any reference document uploaded. Please upload a PDF to ask based on it.`;
+    const prompt = `Here is a document:\n${extractedText}\n\nAnswer the following question:\n"${question}"`;
 
-    if (!extractedText) {
-      return res.json({ answer: prompt });
-    }
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4',
+      messages: [{ role: 'user', content: prompt }],
+    });
 
-    return res.json({ answer: 'OpenAI API is disabled. Please configure your API key to get real answers.' });
-
+    const answer = completion.choices[0].message.content;
+    res.json({ answer });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Failed to process the question' });
+    res.status(500).json({ error: 'Failed to get answer from OpenAI' });
   }
 });
 
-app.post('/clear', (req, res) => {
+// Clear PDF Text
+app.post('/clear', ensureAuthenticated, (req, res) => {
   extractedText = '';
   res.json({ message: 'Extracted text cleared' });
 });
 
-
-
+// Start Server
 app.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
 });
-
