@@ -9,6 +9,7 @@ const multer = require('multer');
 const fs = require('fs');
 const pdfParse = require('pdf-parse');
 const { OpenAI } = require('openai');
+const path = require('path');
 
 const PORT = process.env.PORT || 5000;
 const CLIENT_ORIGIN = 'https://beyond-chats-chatbot.netlify.app';
@@ -19,17 +20,27 @@ const app = express();
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cors({ origin: CLIENT_ORIGIN, credentials: true }));
+app.use(cors({
+  origin: CLIENT_ORIGIN,
+  credentials: true,
+}));
+
+app.set('trust proxy', 1); // Important for HTTPS sessions
+
 app.use(session({
   secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
-  cookie: { secure: false },
+  cookie: {
+    secure: true, // Works only with HTTPS
+    sameSite: 'none',
+  },
 }));
+
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Passport setup
+// Passport config
 passport.serializeUser((user, done) => done(null, user));
 passport.deserializeUser((obj, done) => done(null, obj));
 
@@ -37,7 +48,8 @@ passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID,
   clientSecret: process.env.GOOGLE_CLIENT_SECRET,
   callbackURL: CALLBACK_URL,
-}, (accessToken, refreshToken, profile, done) => {
+},
+(accessToken, refreshToken, profile, done) => {
   profile.accessToken = accessToken;
   profile.refreshToken = refreshToken;
   return done(null, profile);
@@ -72,19 +84,21 @@ app.get('/auth/google/callback',
   }
 );
 
+// Logout
+app.get('/logout', (req, res) => {
+  req.logout(() => {
+    req.session.destroy(() => {
+      res.redirect(CLIENT_ORIGIN);
+    });
+  });
+});
+
 // User Info
 app.get('/userinfo', ensureAuthenticated, (req, res) => {
   res.json({ email: req.user.emails[0].value });
 });
 
-app.get('/logout', (req, res) => {
-  req.logout(() => {
-    req.session.destroy();
-    res.redirect(CLIENT_ORIGIN);
-  });
-});
-
-// Gmail Fetch Route
+// Gmail Fetch
 app.get('/emails', ensureAuthenticated, async (req, res) => {
   const tokens = req.session.tokens;
   if (!tokens) return res.status(401).send('Unauthorized');
@@ -94,19 +108,11 @@ app.get('/emails', ensureAuthenticated, async (req, res) => {
   const gmail = google.gmail({ version: 'v1', auth });
 
   try {
-    const { data } = await gmail.users.messages.list({
-      userId: 'me',
-      maxResults: 10,
-    });
-
+    const { data } = await gmail.users.messages.list({ userId: 'me', maxResults: 10 });
     const emails = await Promise.all(data.messages.map(async (msg) => {
-      const message = await gmail.users.messages.get({
-        userId: 'me',
-        id: msg.id,
-        format: 'full',
-      });
-
+      const message = await gmail.users.messages.get({ userId: 'me', id: msg.id, format: 'full' });
       const headers = message.data.payload.headers;
+
       const subject = headers.find(h => h.name === 'Subject')?.value || 'No Subject';
       const rawFrom = headers.find(h => h.name === 'From')?.value || '';
       const date = headers.find(h => h.name === 'Date')?.value || '';
@@ -143,11 +149,10 @@ app.get('/emails', ensureAuthenticated, async (req, res) => {
   }
 });
 
-// Reply Route
+// Gmail Reply
 app.post('/reply', ensureAuthenticated, async (req, res) => {
   const { to, subject, body, threadId } = req.body;
   const tokens = req.session.tokens;
-
   if (!to || !subject || !body || !threadId) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
@@ -184,8 +189,8 @@ app.post('/reply', ensureAuthenticated, async (req, res) => {
   }
 });
 
-// File Upload
-const uploadDir = 'uploads';
+// PDF Upload
+const uploadDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir);
 }
@@ -213,12 +218,11 @@ app.post('/upload', ensureAuthenticated, upload.single('file'), async (req, res)
   }
 });
 
-// OpenAI Setup
+// OpenAI Ask
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Ask Question
 app.post('/ask', ensureAuthenticated, async (req, res) => {
   const { question } = req.body;
   if (!question) return res.status(400).json({ error: 'Question is required' });
@@ -251,5 +255,5 @@ app.post('/clear', ensureAuthenticated, (req, res) => {
 
 // Start Server
 app.listen(PORT, () => {
-  console.log(`✅ Server running on port ${PORT}`);
+  console.log(`✅ Server running securely on port ${PORT}`);
 });
