@@ -41,14 +41,22 @@ const CopilotChat = () => {
     formData.append('file', selectedFile);
     setUploading(true);
 
-    try {
-      const res = await axios.post('https://beyondchats-dqoh.onrender.com/upload', formData);
-      alert(res.status === 200 ? '✅ PDF uploaded successfully!' : '❌ Upload failed.');
-    } catch (err) {
-      alert(err.response?.data?.error || 'Upload failed.');
-    } finally {
-      setUploading(false);
+   try {
+  const res = await axios.post(
+    'https://beyondchats-dqoh.onrender.com/upload',
+    formData,
+    {
+      withCredentials: true, // 🔐 this sends the session cookie
     }
+  );
+
+  alert(res.status === 200 ? '✅ PDF uploaded successfully!' : '❌ Upload failed.');
+} catch (err) {
+  alert(err.response?.data?.error || 'Upload failed.');
+} finally {
+  setUploading(false);
+}
+
   };
 
   return (
