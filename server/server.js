@@ -16,7 +16,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use(cors({
-  origin: 'https://beyond-chats-chatbot.netlify.app/',
+  origin: 'https://beyond-chats-chatbot.netlify.app',
   credentials: true,
 }));
 
