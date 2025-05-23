@@ -19,7 +19,7 @@ const CopilotChat = () => {
     setLoading(true);
 
     try {
-      const res = await axios.post('http://localhost:5000/ask', { question });
+      const res = await axios.post('https://beyondchats-dqoh.onrender.com/ask', { question });
       const answer = res.data.answer || 'No response from Copilot.';
       setChat([...newChat, { type: 'copilot', text: answer }]);
     } catch (err) {
@@ -42,7 +42,7 @@ const CopilotChat = () => {
     setUploading(true);
 
     try {
-      const res = await axios.post('http://localhost:5000/upload', formData);
+      const res = await axios.post('https://beyondchats-dqoh.onrender.com/upload', formData);
       alert(res.status === 200 ? '✅ PDF uploaded successfully!' : '❌ Upload failed.');
     } catch (err) {
       alert(err.response?.data?.error || 'Upload failed.');

@@ -8,7 +8,7 @@ const MessageArea = ({ selectedEmail }) => {
   const handleSendReply = async (e) => {
     e.preventDefault();
     if (replyText.trim()) {
-      const res = await fetch('http://localhost:5000/reply', {
+      const res = await fetch('https://beyondchats-dqoh.onrender.com/reply', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },

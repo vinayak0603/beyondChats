@@ -8,11 +8,11 @@ const Dashboard = () => {
   const [activeEmailId, setActiveEmailId] = useState(null);
 
   useEffect(() => {
-    axios.get('http://localhost:5000/profile', { withCredentials: true })
+    axios.get('https://beyondchats-dqoh.onrender.com/profile', { withCredentials: true })
       .then(res => setUserEmail(res.data.email))
-      .catch(() => window.location.href = 'http://localhost:5000/auth/google');
+      .catch(() => window.location.href = 'https://beyondchats-dqoh.onrender.com/auth/google');
 
-    axios.get('http://localhost:5000/emails', { withCredentials: true })
+    axios.get('https://beyondchats-dqoh.onrender.com/emails', { withCredentials: true })
       .then(res => setEmails(res.data.messages))
       .catch(err => console.error('Email fetch failed:', err));
   }, []);

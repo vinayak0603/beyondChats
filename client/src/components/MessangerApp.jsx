@@ -13,7 +13,7 @@ const MessengerApp = () => {
   useEffect(() => {
     const fetchUserEmail = async () => {
       try {
-        const res = await axios.get('http://localhost:5000/userinfo', {
+        const res = await axios.get('https://beyondchats-dqoh.onrender.com/userinfo', {
           withCredentials: true
         });
         setUserEmail(res.data.email);
@@ -27,7 +27,7 @@ const MessengerApp = () => {
   useEffect(() => {
     const fetchEmails = async () => {
       try {
-        const res = await axios.get('http://localhost:5000/emails', {
+        const res = await axios.get('https://beyondchats-dqoh.onrender.com/emails', {
           withCredentials: true
         });
         setEmails(res.data.messages);
