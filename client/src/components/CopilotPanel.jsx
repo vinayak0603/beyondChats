@@ -19,15 +19,23 @@ const CopilotChat = () => {
     setLoading(true);
 
     try {
-      const res = await axios.post('https://beyondchats-dqoh.onrender.com/ask', { question });
-      const answer = res.data.answer || 'No response from Copilot.';
-      setChat([...newChat, { type: 'copilot', text: answer }]);
-    } catch (err) {
-      const error = err.response?.data?.error || 'Error getting answer.';
-      setChat([...newChat, { type: 'copilot', text: error }]);
-    } finally {
-      setLoading(false);
+  const res = await axios.post(
+    'https://beyondchats-dqoh.onrender.com/ask',
+    { question },
+    {
+      withCredentials: true, // 🔐 Required to send session cookie
     }
+  );
+
+  const answer = res.data.answer || 'No response from Copilot.';
+  setChat([...newChat, { type: 'copilot', text: answer }]);
+} catch (err) {
+  const error = err.response?.data?.error || 'Error getting answer.';
+  setChat([...newChat, { type: 'copilot', text: error }]);
+} finally {
+  setLoading(false);
+}
+
   };
 
   const handleUpload = async (e) => {
