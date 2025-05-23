@@ -225,7 +225,10 @@ const openai = new OpenAI({
 
 app.post('/ask', ensureAuthenticated, async (req, res) => {
   const { question } = req.body;
-  if (!question) return res.status(400).json({ error: 'Question is required' });
+
+  if (!question) {
+    return res.status(400).json({ error: 'Question is required' });
+  }
 
   if (!extractedText) {
     return res.json({ answer: 'I don’t have any reference document uploaded. Please upload a PDF first.' });
@@ -234,12 +237,15 @@ app.post('/ask', ensureAuthenticated, async (req, res) => {
   try {
     const prompt = `Here is a document:\n${extractedText}\n\nAnswer the following question:\n"${question}"`;
 
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4',
-      messages: [{ role: 'user', content: prompt }],
-    });
+    // ❌ OpenAI API is currently not integrated
+    // const completion = await openai.chat.completions.create({
+    //   model: 'gpt-4',
+    //   messages: [{ role: 'user', content: prompt }],
+    // });
+    // const answer = completion.choices[0].message.content;
 
-    const answer = completion.choices[0].message.content;
+    // ✅ Temporary response while OpenAI is disabled
+    const answer = 'OpenAI API not integrated';
     res.json({ answer });
   } catch (err) {
     console.error(err);
