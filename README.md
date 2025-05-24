@@ -1,5 +1,5 @@
 
-# 📄 BeyondChats – PDF Question Answering with Chat Interface
+# 📄 BeyondChats Assignment
 
 BeyondChats assignment is a Node.js + Express backend server designed to extract text from uploaded PDF files and respond to user queries based on the content of the uploaded document. It supports authentication and includes routes for uploading PDFs and asking questions.
 
