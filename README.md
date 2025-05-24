@@ -30,11 +30,9 @@ BeyondChats assignment is a Node.js + Express backend server designed to extract
 
 ```
 project-root/
-├── server.js
-├── auth.js
-├── .env
+├── server
+├── client
 ├── README.md
-├── package.json
 ```
 
 ---
@@ -128,6 +126,8 @@ https://beyond-chats-chatbot.netlify.app/
 ---
 
 ## 📝Video Link
+
+https://drive.google.com/file/d/17riYz2r_befsCncoeKBD00ilysSM1k_1/view?usp=drivesdk
 
 ---
 
